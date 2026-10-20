@@ -7,6 +7,14 @@ REPO_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"
 ActionState = Literal["open", "done", "dismissed"]
 
 
+class WorkItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    number: int = Field(ge=1)
+    title: str = Field(min_length=1, max_length=500)
+    kind: Literal["issue", "pull_request"]
+    updated_at: AwareDatetime
+
+
 class RepositorySnapshot(BaseModel):
     model_config = ConfigDict(extra="forbid")
     full_name: str = Field(pattern=REPO_PATTERN)
@@ -22,6 +30,7 @@ class RepositorySnapshot(BaseModel):
     source: Literal["manual", "github", "demo"] = "manual"
     coverage_notes: list[str] = Field(default_factory=list, max_length=20)
     captured_at: AwareDatetime = Field(default_factory=lambda: datetime.now(UTC))
+    work_items: list[WorkItem] = Field(default_factory=list, max_length=500)
 
     @field_validator("full_name")
     @classmethod

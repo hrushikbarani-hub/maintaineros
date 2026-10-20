@@ -98,6 +98,37 @@ function renderList() {
     )
     .join("");
 }
+function evidenceFor(snapshot, category) {
+  const kind =
+    category === "backlog"
+      ? "issue"
+      : category === "reviews"
+        ? "pull_request"
+        : null;
+  if (!kind) return "";
+  const captured = new Date(snapshot.captured_at).getTime();
+  const evidence = (snapshot.work_items || [])
+    .filter(
+      (item) =>
+        item.kind === kind &&
+        captured - new Date(item.updated_at).getTime() > 30 * 86400000,
+    )
+    .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+  if (!evidence.length) return "";
+  return `<ul class="evidence">${evidence
+    .slice(0, 5)
+    .map((item) => {
+      const text = `#${item.number} ${esc(item.title)}`;
+      const age = Math.floor(
+        (captured - new Date(item.updated_at).getTime()) / 86400000,
+      );
+      const url = `https://github.com/${repoPath(snapshot.full_name)}/${kind === "issue" ? "issues" : "pull"}/${item.number}`;
+      return `<li>${snapshot.source === "demo" ? `<span>${text} · sample</span>` : `<a href="${url}" target="_blank" rel="noopener noreferrer">${text} ↗</a>`}<small>${age}d without an update at capture</small></li>`;
+    })
+    .join(
+      "",
+    )}</ul>${evidence.length > 5 ? `<p>Showing 5 of ${evidence.length} sampled stale ${kind === "issue" ? "issues" : "PRs"}.</p>` : ""}`;
+}
 async function renderDetail() {
   const version = ++generation;
   const repo = repositories.find((r) => r.snapshot.full_name === selected);
@@ -123,7 +154,7 @@ async function renderDetail() {
       h.findings
         .map((f) => {
           const state = actions[f.category]?.state || "open";
-          return `<article class="finding ${state === "open" ? "" : "done"}"><span class="severity ${f.severity}" aria-label="${f.severity}">◇</span><div class="finding-content"><h4>${esc(f.title)}</h4><p>${esc(f.detail)}</p><p class="next-step">↳ ${esc(f.action)}</p><div class="action-controls">${state === "open" ? `<button class="small-button" data-category="${f.category}" data-state="done">✓ Mark handled</button><button class="small-button" data-category="${f.category}" data-state="dismissed">Dismiss</button>` : `<span class="badge">${state}</span><button class="small-button" data-category="${f.category}" data-state="open">Reopen</button>`}</div></div></article>`;
+          return `<article class="finding ${state === "open" ? "" : "done"}"><span class="severity ${f.severity}" aria-label="${f.severity}">◇</span><div class="finding-content"><h4>${esc(f.title)}</h4><p>${esc(f.detail)}</p><p class="next-step">↳ ${esc(f.action)}</p>${evidenceFor(s, f.category)}<div class="action-controls">${state === "open" ? `<button class="small-button" data-category="${f.category}" data-state="done">✓ Mark handled</button><button class="small-button" data-category="${f.category}" data-state="dismissed">Dismiss</button>` : `<span class="badge">${state}</span><button class="small-button" data-category="${f.category}" data-state="open">Reopen</button>`}</div></div></article>`;
         })
         .join("") ||
       '<p class="empty">No measured triage signals in this snapshot. Review coverage below before interpreting the score.</p>'

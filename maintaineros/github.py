@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 
-from .models import RepositorySnapshot
+from .models import RepositorySnapshot, WorkItem
 
 
 class ImportFailure(Exception):
@@ -119,6 +119,15 @@ class GitHubAdapter:
                 captured_at=now,
                 source="github",
                 coverage_notes=notes,
+                work_items=[
+                    WorkItem(
+                        number=item["number"],
+                        title=item["title"],
+                        kind="pull_request" if "pull_request" in item else "issue",
+                        updated_at=item["updated_at"],
+                    )
+                    for item in issues
+                ],
             )
         except httpx.HTTPError as error:
             raise ImportFailure(

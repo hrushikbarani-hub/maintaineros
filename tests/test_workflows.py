@@ -110,9 +110,18 @@ def test_github_adapter_maps_public_data_and_paginates():
             page = request.url.params["page"]
             return httpx.Response(
                 200,
-                json=[{"updated_at": stale}] * 100
+                json=[
+                    {"number": n, "title": f"Issue {n}", "updated_at": stale} for n in range(1, 101)
+                ]
                 if page == "1"
-                else [{"updated_at": stale, "pull_request": {}}],
+                else [
+                    {
+                        "number": 101,
+                        "title": "Review this PR",
+                        "updated_at": stale,
+                        "pull_request": {},
+                    }
+                ],
             )
         if path.endswith("/commits"):
             return httpx.Response(
@@ -139,6 +148,29 @@ def test_github_adapter_maps_public_data_and_paginates():
     assert data.contributors_last_90_days == 1 and data.top_contributor_share == 1
     assert any("page=2" in url for url in seen)
     assert data.last_release_days is None
+    assert len(data.work_items) == 101
+    assert data.work_items[-1].kind == "pull_request"
+    assert data.work_items[-1].number == 101
+
+
+def test_work_item_evidence_survives_restart_and_old_snapshots_still_load(tmp_path):
+    old = snapshot().model_dump(mode="json")
+    old.pop("work_items")
+    assert RepositorySnapshot.model_validate(old).work_items == []
+    record = snapshot(
+        work_items=[
+            {
+                "number": 42,
+                "title": "A stalled bug",
+                "kind": "issue",
+                "updated_at": datetime(2026, 1, 1, tzinfo=UTC),
+            }
+        ]
+    )
+    Store(tmp_path / "db").save(record)
+    assert (
+        Store(tmp_path / "db").history(record.full_name)[0].work_items[0].title == "A stalled bug"
+    )
 
 
 def test_rate_limit_message_never_exposes_credentials():

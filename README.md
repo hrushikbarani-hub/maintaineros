@@ -12,6 +12,7 @@ Maintainers usually know how many issues exist. The harder question is what to d
 
 - Import a **public GitHub repository** from the browser or CLI. No account or API key is required for modest use.
 - Identify open issues and PRs without updates for 30 days, concentrated contribution activity, and long release gaps.
+- Inspect the oldest sampled stale issues and PRs directly from each recommendation, with GitHub links and their age at capture.
 - Compare health scores across saved snapshots, with the exact scoring rules visible in the interface.
 - Mark recommendations handled or dismissed, and reopen recurring work. States survive restarts.
 - Export current reports as CSV, JSON, or Markdown.
@@ -52,6 +53,8 @@ Compose exposes port 8001 on the local computer and persists the database in a n
 5. Import the same repository later to add another snapshot.
 
 The refresh button reloads stored data. Capturing current GitHub activity requires another import. Handled states persist across snapshots and do not modify scores or GitHub issues.
+
+Item-level evidence is saved by new GitHub imports. Older snapshots remain readable; re-import a repository to capture issue/PR details. Findings show up to five oldest matching items from the bounded sample.
 
 ## CLI
 
