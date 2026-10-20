@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>MaintainerOS · Project workbench</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to workbench</a>
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="MaintainerOS home"
+        ><span class="brand-mark">m<span>↗</span></span
+        >maintainer<span class="muted">os</span></a
+      >
+      <p class="nav-label">WORKSPACE</p>
+      <a class="nav-item active" href="/"
+        >◫ <span>Project health</span><span class="nav-dot"></span></a
+      ><a class="nav-item" href="/api/export.csv"
+        >↓ <span>Export report</span></a
+      ><a class="nav-item" href="/docs">⌘ <span>API reference</span></a>
+      <div class="sidebar-bottom">
+        <span class="live-dot"></span> Local workbench
+        <p>Your data stays in your database.<br />v0.2 · Open source</p>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <span
+          >Workspace <span class="slash">/</span>
+          <strong>Project health</strong></span
+        ><span class="top-label">BUILT FOR THE PEOPLE BEHIND THE CODE</span>
+      </header>
+      <main id="main">
+        <div class="heading">
+          <div>
+            <p class="eyebrow">THE MAINTAINER’S WORKBENCH</p>
+            <h1>A clearer view of<br />what needs you.</h1>
+            <p class="lede">
+              Spot stalled work. Share the load. Keep your projects moving.
+            </p>
+          </div>
+          <button class="primary" id="open-import">
+            + Connect a repository
+          </button>
+        </div>
+        <div id="notice" role="status" aria-live="polite"></div>
+        <section
+          id="summary"
+          class="summary"
+          aria-label="Workspace overview"
+        ></section>
+        <div class="section-heading">
+          <h2>Your repositories <span id="repo-count"></span></h2>
+          <button class="text-button" id="refresh">↻ Refresh workspace</button>
+        </div>
+        <section class="workbench">
+          <div
+            id="repositories"
+            class="repositories"
+            aria-label="Repositories"
+          ></div>
+          <div id="detail" class="detail" aria-live="polite">
+            <p class="empty">Loading your workbench…</p>
+          </div>
+        </section>
+        <footer class="page-footer">
+          Health scores guide triage. They don’t measure a project’s worth.<span
+            >Python + JavaScript · SQLite</span
+          >
+        </footer>
+      </main>
+    </div>
+    <dialog id="import-dialog">
+      <form id="import-form">
+        <div class="dialog-heading">
+          <h2>Bring a project into focus.</h2>
+          <button
+            type="button"
+            class="icon-button"
+            data-close
+            aria-label="Close dialog"
+          >
+            ×
+          </button>
+        </div>
+        <p>
+          Import current activity from a public GitHub repository. A snapshot is
+          saved each time you connect it.
+        </p>
+        <label for="repository-name">GitHub repository</label
+        ><input
+          id="repository-name"
+          name="repository"
+          placeholder="owner/repository"
+          pattern="[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}"
+          required
+          autocomplete="off"
+        /><label for="write-token"
+          >Workspace write token
+          <span class="muted">(if configured)</span></label
+        ><input id="write-token" type="password" autocomplete="off" />
+        <p class="hint">
+          GitHub credentials, if needed for rate limits, are configured on the
+          server. This field is only for your workbench’s write token.
+        </p>
+        <p id="import-error" class="error" role="alert"></p>
+        <button class="primary" id="import-submit">Import activity ↗</button>
+      </form>
+    </dialog>
+  </body>
+</html>

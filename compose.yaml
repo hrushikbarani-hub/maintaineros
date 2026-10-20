@@ -1,0 +1,14 @@
+services:
+  web:
+    build: .
+    ports:
+      - "127.0.0.1:8001:8000"
+    environment:
+      DEMO_DATA: "${DEMO_DATA:-1}"
+      WRITE_TOKEN: "${WRITE_TOKEN:-}"
+      GITHUB_TOKEN: "${GITHUB_TOKEN:-}"
+    volumes:
+      - workbench-data:/app/data
+    restart: unless-stopped
+volumes:
+  workbench-data:
