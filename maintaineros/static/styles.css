@@ -7,6 +7,84 @@
   --line: #2c3931;
   --accent: #b6ef8b;
 }
+.capture-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 20px;
+  flex-wrap: wrap;
+}
+.capture-tools > span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.comparison {
+  margin: 0 0 25px;
+  border: 1px solid var(--line);
+  padding: 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.comparison summary {
+  cursor: pointer;
+  color: #b8d5ac;
+}
+.compare-inputs {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0;
+}
+.compare-inputs label {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.compare-inputs select {
+  width: 100%;
+  display: block;
+  margin-top: 8px;
+  background: #111c15;
+  color: #b8d5ac;
+  border: 1px solid #405345;
+  padding: 9px;
+  border-radius: 4px;
+  font: inherit;
+}
+.comparison table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 10px;
+}
+.comparison td,
+.comparison th {
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 5px;
+  font-weight: 400;
+}
+.comparison li {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+.check-label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.check-label input {
+  width: auto;
+  accent-color: var(--accent);
+}
+@media (max-width: 600px) {
+  .compare-inputs {
+    flex-direction: column;
+  }
+  .comparison table {
+    font-size: 9px;
+  }
+}
 .evidence {
   padding: 0;
   margin: 12px 0;

@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 
-from .models import RepositorySnapshot, WorkItem
+from .models import RepositorySnapshot, TriagePolicy, WorkItem
 
 
 class ImportFailure(Exception):
@@ -14,7 +14,7 @@ class ImportFailure(Exception):
 
 class GitHubAdapter:
     def __init__(self, token: str | None = None, transport=None):
-        headers = {"Accept": "application/vnd.github+json", "User-Agent": "MaintainerOS/0.2"}
+        headers = {"Accept": "application/vnd.github+json", "User-Agent": "MaintainerOS/0.3"}
         if token:
             headers["Authorization"] = f"Bearer {token}"
         self.client = httpx.Client(
@@ -50,8 +50,9 @@ class GitHubAdapter:
                 return data, False
         return data, True
 
-    def snapshot(self, name: str) -> RepositorySnapshot:
+    def snapshot(self, name: str, policy: TriagePolicy | None = None) -> RepositorySnapshot:
         try:
+            policy = policy or TriagePolicy()
             now = datetime.now(UTC)
             metadata = self.get(f"/repos/{name}")
             if metadata.get("private"):
@@ -72,7 +73,7 @@ class GitHubAdapter:
             )
             tracked_issues = [i for i in issues if "pull_request" not in i]
             prs = [i for i in issues if "pull_request" in i]
-            cutoff = now - timedelta(days=30)
+            cutoff = now - timedelta(days=policy.stale_days)
 
             def stale(rows):
                 return sum(
@@ -81,7 +82,7 @@ class GitHubAdapter:
                 )
 
             notes = [
-                "Stale means no update for 30 days. Contributor concentration uses commits linked to non-bot GitHub accounts in the last 90 days.",
+                f"Stale means no update for {policy.stale_days} days. Contributor concentration uses commits linked to non-bot GitHub accounts in the last 90 days.",
                 "Score is a triage heuristic, not a quality ranking. Release expectations vary by project.",
             ]
             if issue_cap:
@@ -119,6 +120,7 @@ class GitHubAdapter:
                 captured_at=now,
                 source="github",
                 coverage_notes=notes,
+                policy=policy,
                 work_items=[
                     WorkItem(
                         number=item["number"],

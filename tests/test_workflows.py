@@ -185,7 +185,7 @@ def test_rate_limit_message_never_exposes_credentials():
 
 def test_failed_github_import_does_not_save(tmp_path):
     class FailingAdapter:
-        def snapshot(self, name):
+        def snapshot(self, name, policy=None):
             raise ImportFailure("Temporary outage")
 
     with TestClient(
@@ -199,7 +199,7 @@ def test_failed_github_import_does_not_save(tmp_path):
 
 def test_successful_github_import_persists(tmp_path):
     class FakeAdapter:
-        def snapshot(self, name):
+        def snapshot(self, name, policy=None):
             return snapshot(source="github", stars=123)
 
     with TestClient(create_app(tmp_path / "db", demo=False, github_factory=FakeAdapter)) as client:

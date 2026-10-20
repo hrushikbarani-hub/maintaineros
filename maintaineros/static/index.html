@@ -23,7 +23,7 @@
       ><a class="nav-item" href="/docs">⌘ <span>API reference</span></a>
       <div class="sidebar-bottom">
         <span class="live-dot"></span> Local workbench
-        <p>Your data stays in your database.<br />v0.2 · Open source</p>
+        <p>Your data stays in your database.<br />v0.3 · Open source</p>
       </div>
     </aside>
     <div class="workspace">
@@ -108,6 +108,72 @@
         </p>
         <p id="import-error" class="error" role="alert"></p>
         <button class="primary" id="import-submit">Import activity ↗</button>
+      </form>
+    </dialog>
+    <dialog id="policy-dialog">
+      <form id="policy-form">
+        <div class="dialog-heading">
+          <h2>Match your project’s rhythm.</h2>
+          <button
+            type="button"
+            class="icon-button"
+            data-close
+            aria-label="Close policy settings"
+          >
+            ×
+          </button>
+        </div>
+        <p id="policy-project"></p>
+        <p>
+          Changes apply to future GitHub captures. Saved snapshots keep their
+          original policy and score.
+        </p>
+        <label for="stale-days"
+          >Days without updates before work is stale</label
+        >
+        <input
+          id="stale-days"
+          type="number"
+          min="1"
+          max="365"
+          step="1"
+          required
+        />
+        <label for="release-days">Release gap threshold, in days</label>
+        <input
+          id="release-days"
+          type="number"
+          min="1"
+          max="3650"
+          step="1"
+          required
+        />
+        <label for="concentration"
+          >Contribution concentration threshold (%)</label
+        >
+        <input
+          id="concentration"
+          type="number"
+          min="50"
+          max="100"
+          step="any"
+          required
+        />
+        <label class="check-label"
+          ><input id="check-releases" type="checkbox" /> Check release
+          cadence</label
+        >
+        <label class="check-label"
+          ><input id="check-concentration" type="checkbox" /> Check contributor
+          concentration</label
+        >
+        <label for="policy-token"
+          >Workspace write token
+          <span class="muted">(if configured)</span></label
+        >
+        <input id="policy-token" type="password" autocomplete="off" />
+        <p id="policy-error" class="error" role="alert"></p>
+        <button class="primary" id="save-policy">Save capture policy</button>
       </form>
     </dialog>
   </body>

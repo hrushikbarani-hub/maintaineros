@@ -15,7 +15,8 @@ let repositories = [],
   selected = "",
   writeToken = "",
   tokenRequired = false,
-  generation = 0;
+  generation = 0,
+  policyTarget = "";
 async function request(path, options = {}) {
   const response = await fetch(path, {
     ...options,
@@ -72,7 +73,7 @@ async function refresh() {
     [
       "Waiting for review",
       repositories.reduce((sum, r) => sum + r.snapshot.stale_pull_requests, 0),
-      "PRs without updates for 30 days",
+      "Using each capture’s stale threshold",
     ],
   ];
   $("#summary").innerHTML = stats
@@ -111,7 +112,8 @@ function evidenceFor(snapshot, category) {
     .filter(
       (item) =>
         item.kind === kind &&
-        captured - new Date(item.updated_at).getTime() > 30 * 86400000,
+        captured - new Date(item.updated_at).getTime() >
+          (snapshot.policy?.stale_days || 30) * 86400000,
     )
     .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
   if (!evidence.length) return "";
@@ -137,6 +139,19 @@ async function renderDetail() {
   );
   if (version !== generation) return;
   const { snapshot: s, health: h, actions } = repo;
+  const p = s.policy || {
+    stale_days: 30,
+    release_gap_days: 180,
+    concentration_threshold: 0.7,
+    check_releases: true,
+    check_concentration: true,
+  };
+  const options = history
+    .map(
+      (entry, index) =>
+        `<option value="${entry.id}">${esc(new Date(entry.snapshot.captured_at).toLocaleString())} · ${entry.health.score}/100 · ${index + 1}</option>`,
+    )
+    .join("");
   const points = history
     .map(
       (r, i) =>
@@ -148,7 +163,9 @@ async function renderDetail() {
   ).length;
   $("#detail").innerHTML =
     `<div class="detail-header"><div><h2>${esc(s.full_name)}</h2><p class="detail-sub">${s.source === "demo" ? '<span class="badge demo">Fictional demo</span> · ' : ""}${s.stars.toLocaleString()} stars · ${s.contributors_last_90_days ?? "Unknown"} recent contributors<br>Captured ${esc(new Date(s.captured_at).toLocaleString())}</p></div><div class="big-score">${h.score}<small> /100</small></div></div>
-    <figure class="chart"><div class="chart-label"><span>HEALTH OVER TIME</span><span>${history.length} SNAPSHOT${history.length === 1 ? "" : "S"}</span></div><svg viewBox="0 0 500 80" preserveAspectRatio="none" role="img" aria-label="Health scores: ${history.map((r) => r.health.score).join(", ")}"><line x1="0" y1="70" x2="500" y2="70"></line>${history.length === 1 ? `<circle cx="250" cy="${70 - h.score * 0.6}" r="3" fill="#b6ef8b"></circle>` : `<polyline points="${points}"></polyline>`}</svg><figcaption>${esc(new Date(history[0].snapshot.captured_at).toLocaleDateString())} → ${esc(new Date(s.captured_at).toLocaleDateString())} · Higher means fewer measured triage signals</figcaption></figure>
+    <figure class="chart"><div class="chart-label"><span>HEALTH OVER TIME</span><span>${history.length} SNAPSHOT${history.length === 1 ? "" : "S"}</span></div><svg viewBox="0 0 500 80" preserveAspectRatio="none" role="img" aria-label="Health scores: ${history.map((r) => r.health.score).join(", ")}"><line x1="0" y1="70" x2="500" y2="70"></line>${history.length === 1 ? `<circle cx="250" cy="${70 - h.score * 0.6}" r="3" fill="#b6ef8b"></circle>` : `<polyline points="${points}"></polyline>`}</svg><figcaption>${esc(new Date(history[0].snapshot.captured_at).toLocaleDateString())} → ${esc(new Date(s.captured_at).toLocaleDateString())} · Each score uses its capture’s policy and coverage</figcaption></figure>
+    <div class="capture-tools"><button class="small-button" data-policy>Configure capture policy</button><span>Captured with ${p.stale_days}d stale threshold</span></div>
+    ${history.length > 1 ? `<details class="comparison"><summary>Compare saved captures</summary><div class="compare-inputs"><label>Before<select id="compare-before">${options}</select></label><label>After<select id="compare-after">${options}</select></label></div><button class="small-button" data-compare>Compare activity</button><div id="comparison-result" aria-live="polite"></div></details>` : ""}
     <div class="actions-heading"><h3>Recommended next steps</h3><span>${open} open</span></div>
     ${
       h.findings
@@ -159,7 +176,62 @@ async function renderDetail() {
         .join("") ||
       '<p class="empty">No measured triage signals in this snapshot. Review coverage below before interpreting the score.</p>'
     }
-    <details class="coverage"><summary>Data coverage & score methodology</summary><p>Backlog: −2 per stale issue (max 25). Reviews: −4 per stale PR (max 25). Concentration ≥70%: −15. Release older than 180 days: −10. Unknown release and contributor data are not penalized.</p><p>Action states are workbench notes and do not change the score. They persist across snapshots; reopen them when work recurs.</p><ul>${h.coverage_notes.map((note) => `<li>${esc(note)}</li>`).join("")}</ul></details>`;
+    <details class="coverage"><summary>Data coverage & score methodology</summary><p>This capture: stale after ${p.stale_days} days. Backlog: −2 per stale issue (max 25). Reviews: −4 per stale PR (max 25). ${p.check_concentration ? `Concentration ≥${Math.round(p.concentration_threshold * 100)}%: −15.` : "Concentration check disabled."} ${p.check_releases ? `Release older than ${p.release_gap_days} days: −10.` : "Release check disabled."} Unknown release and contributor data are not penalized.</p><p>History scores use each capture’s saved policy. Action states are workbench notes and do not change the score. They persist across snapshots; reopen them when work recurs.</p><ul>${h.coverage_notes.map((note) => `<li>${esc(note)}</li>`).join("")}</ul></details>`;
+  if ($("#compare-after")) $("#compare-after").value = history.at(-1).id;
+}
+function openPolicy() {
+  const repo = repositories.find((r) => r.snapshot.full_name === selected);
+  const p = repo.capture_policy || repo.snapshot.policy;
+  policyTarget = selected;
+  $("#policy-project").textContent = selected;
+  $("#stale-days").value = p.stale_days;
+  $("#release-days").value = p.release_gap_days;
+  $("#concentration").value = p.concentration_threshold * 100;
+  $("#check-releases").checked = p.check_releases;
+  $("#check-concentration").checked = p.check_concentration;
+  $("#policy-token").value = writeToken;
+  $("#policy-error").textContent = "";
+  $("#policy-dialog").showModal();
+}
+async function compareCaptures(button) {
+  const view = generation,
+    name = selected;
+  const query = new URLSearchParams({
+    before: $("#compare-before").value,
+    after: $("#compare-after").value,
+  });
+  button.disabled = true;
+  try {
+    const result = await request(
+      `/api/repositories/${repoPath(name)}/compare?${query}`,
+    );
+    if (view !== generation) return;
+    const labels = {
+      stars: "Stars",
+      open_issues: "Open issues",
+      open_pull_requests: "Open PRs",
+      stale_issues: "Stale issues",
+      stale_pull_requests: "Stale PRs",
+      contributors_last_90_days: "Contributors",
+      last_release_days: "Release age (days)",
+    };
+    $("#comparison-result").innerHTML =
+      `<p>Score: ${result.score.before} → ${result.score.after} (${result.score.delta >= 0 ? "+" : ""}${result.score.delta})</p><table><thead><tr><th>Metric</th><th>Before</th><th>After</th><th>Change</th></tr></thead><tbody>${Object.entries(
+        labels,
+      )
+        .map(([key, label]) => {
+          const m = result.metrics[key];
+          return `<tr><th>${label}</th><td>${m.before ?? "Unknown"}</td><td>${m.after ?? "Unknown"}</td><td>${m.delta === null ? "—" : (m.delta > 0 ? "+" : "") + m.delta}</td></tr>`;
+        })
+        .join(
+          "",
+        )}</tbody></table>${result.item_comparison_available ? `<p>${result.newly_observed.length} newly observed items · ${result.no_longer_observed.length} no longer observed</p>` : ""}<ul>${result.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>`;
+  } catch (error) {
+    if (view === generation)
+      $("#comparison-result").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
 }
 $("#repositories").addEventListener("click", (event) => {
   const button = event.target.closest("[data-repository]");
@@ -169,6 +241,15 @@ $("#repositories").addEventListener("click", (event) => {
   renderDetail().catch((e) => notice(e.message, true));
 });
 $("#detail").addEventListener("click", async (event) => {
+  if (event.target.closest("[data-policy]")) {
+    openPolicy();
+    return;
+  }
+  const compareButton = event.target.closest("[data-compare]");
+  if (compareButton) {
+    await compareCaptures(compareButton);
+    return;
+  }
   const button = event.target.closest("[data-category]");
   if (!button) return;
   if (tokenRequired && !writeToken) {
@@ -194,7 +275,43 @@ $("#detail").addEventListener("click", async (event) => {
 $("#open-import").addEventListener("click", () =>
   $("#import-dialog").showModal(),
 );
-$("[data-close]").addEventListener("click", () => $("#import-dialog").close());
+document
+  .querySelectorAll("[data-close]")
+  .forEach((button) =>
+    button.addEventListener("click", () => button.closest("dialog").close()),
+  );
+$("#policy-token").addEventListener("input", (event) => {
+  writeToken = event.target.value;
+  $("#write-token").value = writeToken;
+});
+$("#policy-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = $("#save-policy");
+  button.disabled = true;
+  $("#policy-error").textContent = "";
+  const policy = {
+    stale_days: Number($("#stale-days").value),
+    release_gap_days: Number($("#release-days").value),
+    concentration_threshold: Number($("#concentration").value) / 100,
+    check_releases: $("#check-releases").checked,
+    check_concentration: $("#check-concentration").checked,
+  };
+  try {
+    await request(`/api/repositories/${repoPath(policyTarget)}/policy`, {
+      method: "PUT",
+      body: JSON.stringify(policy),
+    });
+    await refresh();
+    $("#policy-dialog").close();
+    notice(
+      "Policy saved. Import this repository again to capture activity with the new thresholds. Historical scores are unchanged.",
+    );
+  } catch (error) {
+    $("#policy-error").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
 $("#write-token").addEventListener(
   "input",
   (event) => (writeToken = event.target.value),

@@ -9,9 +9,10 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from .comparison import compare
 from .demo import seed
 from .github import GitHubAdapter, ImportFailure
-from .models import ActionUpdate, GitHubImport, RepositorySnapshot
+from .models import ActionUpdate, GitHubImport, RepositorySnapshot, TriagePolicy
 from .scoring import build_report
 from .storage import Store
 
@@ -30,7 +31,7 @@ def create_app(db_path=None, demo=None, write_token=None, github_factory=None):
             seed(store)
         yield
 
-    app = FastAPI(title="MaintainerOS", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="MaintainerOS", version="0.3.0", lifespan=lifespan)
     app.state.store = store
 
     def authorize(x_write_token: str = Header(default="")):
@@ -50,12 +51,17 @@ def create_app(db_path=None, demo=None, write_token=None, github_factory=None):
 
     @app.get("/api/status")
     def status():
-        return {"ok": True, "version": "0.2.0", "write_token_required": bool(token)}
+        return {"ok": True, "version": "0.3.0", "write_token_required": bool(token)}
 
     @app.get("/api/repositories")
     def repositories():
         return [
-            {"snapshot": s, "health": build_report(s), "actions": store.actions(s.full_name)}
+            {
+                "snapshot": s,
+                "health": build_report(s),
+                "actions": store.actions(s.full_name),
+                "capture_policy": store.policy(s.full_name),
+            }
             for s in store.latest()
         ]
 
@@ -73,9 +79,36 @@ def create_app(db_path=None, demo=None, write_token=None, github_factory=None):
     def history(owner: str, name: str, limit: int = Query(60, ge=1, le=200)):
         require_repository(owner, name)
         return [
-            {"snapshot": s, "health": build_report(s)}
-            for s in reversed(store.history(f"{owner}/{name}", limit))
+            {"id": identifier, "snapshot": s, "health": build_report(s)}
+            for identifier, s in reversed(store.history_entries(f"{owner}/{name}", limit))
         ]
+
+    @app.get("/api/repositories/{owner}/{name}/policy")
+    def policy(owner: str, name: str):
+        require_repository(owner, name)
+        return store.policy(f"{owner}/{name}")
+
+    @app.put("/api/repositories/{owner}/{name}/policy", dependencies=[Depends(authorize)])
+    def update_policy(owner: str, name: str, policy: TriagePolicy):
+        snapshot = require_repository(owner, name)
+        store.set_policy(snapshot.full_name, policy)
+        return policy
+
+    @app.get("/api/repositories/{owner}/{name}/compare")
+    def compare_captures(
+        owner: str,
+        name: str,
+        before: str = Query(pattern=r"^[a-f0-9]{64}$"),
+        after: str = Query(pattern=r"^[a-f0-9]{64}$"),
+    ):
+        old = store.find_snapshot(f"{owner}/{name}", before)
+        new = store.find_snapshot(f"{owner}/{name}", after)
+        if old is None or new is None:
+            raise HTTPException(404, "Snapshot not found in this repository")
+        try:
+            return compare(old, new)
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from error
 
     @app.post("/api/repositories/snapshot", status_code=201, dependencies=[Depends(authorize)])
     def snapshot(snapshot: RepositorySnapshot):
@@ -86,7 +119,7 @@ def create_app(db_path=None, demo=None, write_token=None, github_factory=None):
     def import_github(payload: GitHubImport):
         adapter = github_factory() if github_factory else GitHubAdapter(os.getenv("GITHUB_TOKEN"))
         try:
-            snapshot = adapter.snapshot(payload.full_name)
+            snapshot = adapter.snapshot(payload.full_name, policy=store.policy(payload.full_name))
         except ImportFailure as error:
             raise HTTPException(502, str(error)) from error
         store.save(snapshot)

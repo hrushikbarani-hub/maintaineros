@@ -13,7 +13,7 @@ def build_report(snapshot: RepositorySnapshot) -> HealthReport:
             Finding(
                 severity="warning" if snapshot.stale_issues < 10 else "critical",
                 category="backlog",
-                title=f"{snapshot.stale_issues} issues may be stale",
+                title=f"{snapshot.stale_issues} {'issue may' if snapshot.stale_issues == 1 else 'issues may'} be stale",
                 detail="Issues without recent activity can hide bugs and frustrate contributors.",
                 action="Review, close, or add a clear next step to stale issues.",
             )
@@ -25,13 +25,17 @@ def build_report(snapshot: RepositorySnapshot) -> HealthReport:
             Finding(
                 severity="critical" if snapshot.stale_pull_requests >= 5 else "warning",
                 category="reviews",
-                title=f"{snapshot.stale_pull_requests} pull requests need attention",
+                title=f"{snapshot.stale_pull_requests} pull {'request needs' if snapshot.stale_pull_requests == 1 else 'requests need'} attention",
                 detail="Long-lived pull requests increase contributor drop-off and merge conflicts.",
                 action="Assign reviewers or comment with a concrete decision path.",
             )
         )
 
-    if snapshot.top_contributor_share is not None and snapshot.top_contributor_share >= 0.7:
+    if (
+        snapshot.policy.check_concentration
+        and snapshot.top_contributor_share is not None
+        and snapshot.top_contributor_share >= snapshot.policy.concentration_threshold
+    ):
         score -= 15
         findings.append(
             Finding(
@@ -43,14 +47,18 @@ def build_report(snapshot: RepositorySnapshot) -> HealthReport:
             )
         )
 
-    if snapshot.last_release_days is not None and snapshot.last_release_days > 180:
+    if (
+        snapshot.policy.check_releases
+        and snapshot.last_release_days is not None
+        and snapshot.last_release_days > snapshot.policy.release_gap_days
+    ):
         score -= 10
         findings.append(
             Finding(
                 severity="info",
                 category="release",
                 title="Release cadence is unclear",
-                detail="No release in the last six months was recorded for this snapshot.",
+                detail=f"The latest release is {snapshot.last_release_days} days old, above this project's {snapshot.policy.release_gap_days}-day threshold.",
                 action="Publish a release or document the project's release policy.",
             )
         )
@@ -65,4 +73,5 @@ def build_report(snapshot: RepositorySnapshot) -> HealthReport:
         captured_at=snapshot.captured_at,
         source=snapshot.source,
         coverage_notes=snapshot.coverage_notes,
+        policy=snapshot.policy,
     )
