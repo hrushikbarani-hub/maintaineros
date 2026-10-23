@@ -24,7 +24,7 @@ Requires Python 3.11 or newer. From the project folder:
 
 ```sh
 python -m venv .venv
-# Windows: .venv\\Scripts\\activate
+# Windows: .venv\Scripts\\activate
 # macOS/Linux: source .venv/bin/activate
 python -m pip install -e ".[dev]"
 python -m uvicorn maintaineros.main:app --host 127.0.0.1 --port 8001
