@@ -11,16 +11,14 @@ from maintaineros.models import RepositorySnapshot
 from maintaineros.scoring import build_report
 from maintaineros.storage import Store
 
-
 def snapshot(**values):
     return RepositorySnapshot(
         full_name="team/project", open_issues=40, open_pull_requests=10, **values
     )
 
-
 def test_scoring_explains_penalties_and_unknowns():
     healthy = build_report(snapshot())
-    assert healthy.score == 100  # Unknown release/contributors are not fabricated.
+    assert healthy.score == 100  
     report = build_report(
         snapshot(
             stale_issues=12, stale_pull_requests=6, top_contributor_share=0.8, last_release_days=200
@@ -28,7 +26,6 @@ def test_scoring_explains_penalties_and_unknowns():
     )
     assert report.score == 27
     assert {f.category for f in report.findings} == {"backlog", "reviews", "resilience", "release"}
-
 
 @pytest.mark.parametrize(
     "values",
@@ -43,7 +40,6 @@ def test_impossible_metrics_rejected(values):
     with pytest.raises(ValidationError):
         snapshot(**values)
 
-
 def test_snapshots_survive_restart_and_duplicate_import(tmp_path):
     path = tmp_path / "data.db"
     first = snapshot(captured_at=datetime(2026, 1, 1, tzinfo=UTC))
@@ -55,7 +51,6 @@ def test_snapshots_survive_restart_and_duplicate_import(tmp_path):
     restarted = Store(path)
     assert len(restarted.history("Team/Project")) == 2
     assert restarted.latest()[0].stars == 42
-
 
 def test_api_actions_history_and_write_token(tmp_path):
     path = tmp_path / "data.db"
@@ -95,7 +90,6 @@ def test_api_actions_history_and_write_token(tmp_path):
         assert client.get("/").headers["content-security-policy"].startswith("default-src 'self'")
     with TestClient(create_app(path, demo=False)) as client:
         assert client.get("/api/repositories").json()[0]["actions"]["backlog"]["note"] == "Reviewed"
-
 
 def test_github_adapter_maps_public_data_and_paginates():
     now = datetime.now(UTC)
@@ -152,7 +146,6 @@ def test_github_adapter_maps_public_data_and_paginates():
     assert data.work_items[-1].kind == "pull_request"
     assert data.work_items[-1].number == 101
 
-
 def test_work_item_evidence_survives_restart_and_old_snapshots_still_load(tmp_path):
     old = snapshot().model_dump(mode="json")
     old.pop("work_items")
@@ -172,7 +165,6 @@ def test_work_item_evidence_survives_restart_and_old_snapshots_still_load(tmp_pa
         Store(tmp_path / "db").history(record.full_name)[0].work_items[0].title == "A stalled bug"
     )
 
-
 def test_rate_limit_message_never_exposes_credentials():
     adapter = GitHubAdapter(
         token="secret-token", transport=httpx.MockTransport(lambda r: httpx.Response(403))
@@ -181,7 +173,6 @@ def test_rate_limit_message_never_exposes_credentials():
         adapter.snapshot("team/project")
     assert "secret-token" not in str(error.value)
     assert "rate limit" in str(error.value)
-
 
 def test_failed_github_import_does_not_save(tmp_path):
     class FailingAdapter:
@@ -195,7 +186,6 @@ def test_failed_github_import_does_not_save(tmp_path):
             client.post("/api/import/github", json={"full_name": "team/project"}).status_code == 502
         )
         assert client.get("/api/repositories").json() == []
-
 
 def test_successful_github_import_persists(tmp_path):
     class FakeAdapter:

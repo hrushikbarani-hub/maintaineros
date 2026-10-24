@@ -11,7 +11,6 @@ from maintaineros.models import RepositorySnapshot, TriagePolicy
 from maintaineros.scoring import build_report
 from maintaineros.storage import Store
 
-
 def test_policy_persists_without_rescoring_old_snapshots(tmp_path):
     path = tmp_path / "db"
     original = RepositorySnapshot(
@@ -33,7 +32,6 @@ def test_policy_persists_without_rescoring_old_snapshots(tmp_path):
         ).score
         == 100
     )
-
 
 def test_github_import_uses_configured_stale_boundary():
     def response(request):
@@ -61,7 +59,6 @@ def test_github_import_uses_configured_stale_boundary():
     assert capture.policy.stale_days == 60
     assert "60 days" in capture.coverage_notes[0]
 
-
 def test_compare_accounts_for_missing_values_and_changed_policy():
     now = datetime.now(UTC)
     item = dict(number=1, title="Issue", kind="issue", updated_at=now)
@@ -84,7 +81,6 @@ def test_compare_accounts_for_missing_values_and_changed_policy():
     assert result["metrics"]["contributors_last_90_days"]["delta"] is None
     assert result["same_policy"] is False
     assert any("not a like-for-like" in note for note in result["notes"])
-
 
 def test_snapshot_ids_scoped_comparison_and_policy_auth(tmp_path):
     with TestClient(create_app(tmp_path / "db", demo=False, write_token="token")) as client:
@@ -133,7 +129,6 @@ def test_snapshot_ids_scoped_comparison_and_policy_auth(tmp_path):
         policy["stale_days"] = 0
         assert client.put(url, json=policy, headers=headers).status_code == 422
 
-
 def test_legacy_snapshot_keeps_stored_identity(tmp_path):
     store = Store(tmp_path / "db")
     snapshot = RepositorySnapshot(full_name="team/project")
@@ -149,19 +144,17 @@ def test_legacy_snapshot_keeps_stored_identity(tmp_path):
     assert restored.policy == TriagePolicy()
     assert store.find_snapshot("team/project", identifier) == restored
 
-
 def test_policy_boundaries_and_disabled_checks():
     snapshot = RepositorySnapshot(
         full_name="team/project", top_contributor_share=0.7, last_release_days=180
     )
-    assert build_report(snapshot).score == 85  # Concentration inclusive; release strictly older.
+    assert build_report(snapshot).score == 85  
     snapshot.policy = TriagePolicy(concentration_threshold=0.8)
     assert build_report(snapshot).score == 100
     snapshot.last_release_days = 181
     assert build_report(snapshot).score == 90
     snapshot.policy = TriagePolicy(check_releases=False, check_concentration=False)
     assert build_report(snapshot).score == 100
-
 
 def test_observed_item_changes_do_not_claim_closure():
     now = datetime.now(UTC)

@@ -6,7 +6,6 @@ from pathlib import Path
 
 from .models import ActionUpdate, RepositorySnapshot, TriagePolicy
 
-
 class Store:
     def __init__(self, path: str | Path):
         self.path = Path(path)
@@ -40,7 +39,7 @@ class Store:
             db.close()
 
     def save(self, snapshot: RepositorySnapshot):
-        # Canonical UTC strings make chronological SQL ordering reliable.
+        
         snapshot = snapshot.model_copy(update={"captured_at": snapshot.captured_at.astimezone(UTC)})
         payload = snapshot.model_dump_json()
         digest = hashlib.sha256(payload.encode()).hexdigest()
