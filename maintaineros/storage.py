@@ -39,7 +39,6 @@ class Store:
             db.close()
 
     def save(self, snapshot: RepositorySnapshot):
-        
         snapshot = snapshot.model_copy(update={"captured_at": snapshot.captured_at.astimezone(UTC)})
         payload = snapshot.model_dump_json()
         digest = hashlib.sha256(payload.encode()).hexdigest()
