@@ -1,6 +1,6 @@
 # MaintainerOS
 
-[![Tests](https://github.com/hrushikbarani-hub/maintaineros/actions/workflows/test.yml/badge.svg)](https://github.com/hrushikbarani-hub/maintaineros/actions/workflows/test.yml)
+[![Tests](https://github.com/hirsu-dev/maintaineros/actions/workflows/test.yml/badge.svg)](https://github.com/hirsu-dev/maintaineros/actions/workflows/test.yml)
 
 MaintainerOS is a local tool that helps you decide what to work on in a GitHub repository. It saves dated snapshots, explains its findings, and lets you track tasks without changing anything on GitHub.
 
